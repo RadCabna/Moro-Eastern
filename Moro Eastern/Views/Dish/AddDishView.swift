@@ -17,6 +17,10 @@ struct AddDishView: View {
 
     @State private var selectedPhotoItems: [PhotosPickerItem] = []
     @State private var selectedImages: [UIImage] = []
+    @State private var showPhotoSourceDialog  = false
+    @State private var showPhotoLibrary       = false
+    @State private var showCamera             = false
+    @State private var cameraUnavailableAlert = false
 
     @State private var ingredients: [Ingredient] = [Ingredient()]
     @State private var steps: [String] = [""]
@@ -45,6 +49,8 @@ struct AddDishView: View {
                     .padding(.top, screenHeight * 0.018)
                     .padding(.bottom, editing != nil ? screenHeight * 0.24 : screenHeight * 0.14)
                 }
+                .scrollDismissesKeyboard(.interactively)
+                .hideKeyboardOnTap()
             }
 
             saveButton
@@ -54,6 +60,33 @@ struct AddDishView: View {
         .ignoresSafeArea(edges: .bottom)
         .navigationBarHidden(true)
         .scrollDismissesKeyboard(.interactively)
+        .photosPicker(isPresented: $showPhotoLibrary,
+                      selection: $selectedPhotoItems,
+                      maxSelectionCount: 6,
+                      matching: .images)
+        .fullScreenCover(isPresented: $showCamera) {
+            CameraImagePicker(images: $selectedImages)
+        }
+        .confirmationDialog("Add Photo", isPresented: $showPhotoSourceDialog, titleVisibility: .visible) {
+            Button("Camera") {
+                requestCameraAccess { granted in
+                    if granted {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                            showCamera = true
+                        }
+                    } else {
+                        cameraUnavailableAlert = true
+                    }
+                }
+            }
+            Button("Photo Library") { showPhotoLibrary = true }
+            Button("Cancel", role: .cancel) {}
+        }
+        .alert("Camera Unavailable", isPresented: $cameraUnavailableAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Please allow camera access in Settings to take photos.")
+        }
         .onChange(of: selectedPhotoItems) { loadPhotos() }
         .onAppear {
             appState.hideBar()
@@ -193,14 +226,13 @@ struct AddDishView: View {
     private var imageRow: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: screenHeight * 0.012) {
-                PhotosPicker(selection: $selectedPhotoItems,
-                             maxSelectionCount: 6,
-                             matching: .images) {
+                Button { showPhotoSourceDialog = true } label: {
                     Image("addPhoto")
                         .resizable()
                         .scaledToFit()
                         .frame(width: screenHeight * 0.1, height: screenHeight * 0.1)
                 }
+                .buttonStyle(.plain)
 
                 ForEach(selectedImages.indices, id: \.self) { i in
                     Image(uiImage: selectedImages[i])

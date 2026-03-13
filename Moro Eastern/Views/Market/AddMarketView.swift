@@ -17,6 +17,10 @@ struct AddMarketView: View {
 
     @State private var selectedPhotoItems: [PhotosPickerItem] = []
     @State private var selectedImages: [UIImage] = []
+    @State private var showPhotoSourceDialog = false
+    @State private var showPhotoLibrary      = false
+    @State private var showCamera            = false
+    @State private var cameraUnavailableAlert = false
 
     @State private var scent = ""
     @State private var sound = ""
@@ -61,6 +65,33 @@ struct AddMarketView: View {
         .ignoresSafeArea(edges: .bottom)
         .navigationBarHidden(true)
         .sheet(isPresented: $showDatePicker) { datePickerSheet }
+        .photosPicker(isPresented: $showPhotoLibrary,
+                      selection: $selectedPhotoItems,
+                      maxSelectionCount: 10,
+                      matching: .images)
+        .fullScreenCover(isPresented: $showCamera) {
+            CameraImagePicker(images: $selectedImages)
+        }
+        .confirmationDialog("Add Photo", isPresented: $showPhotoSourceDialog, titleVisibility: .visible) {
+            Button("Camera") {
+                requestCameraAccess { granted in
+                    if granted {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                            showCamera = true
+                        }
+                    } else {
+                        cameraUnavailableAlert = true
+                    }
+                }
+            }
+            Button("Photo Library") { showPhotoLibrary = true }
+            Button("Cancel", role: .cancel) {}
+        }
+        .alert("Camera Unavailable", isPresented: $cameraUnavailableAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Please allow camera access in Settings to take photos.")
+        }
         .onChange(of: selectedPhotoItems) { loadPhotos() }
         .scrollDismissesKeyboard(.interactively)
         .onAppear {
@@ -126,6 +157,8 @@ struct AddMarketView: View {
             .padding(.top, screenHeight * 0.01)
             .padding(.bottom, editing != nil ? screenHeight * 0.24 : screenHeight * 0.14)
         }
+        .scrollDismissesKeyboard(.interactively)
+        .hideKeyboardOnTap()
     }
 
     // MARK: – General Information
@@ -182,11 +215,7 @@ struct AddMarketView: View {
     private var imageSection: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: screenHeight * 0.012) {
-                PhotosPicker(
-                    selection: $selectedPhotoItems,
-                    maxSelectionCount: 10,
-                    matching: .images
-                ) {
+                Button { showPhotoSourceDialog = true } label: {
                     Image("addPhoto")
                         .resizable()
                         .scaledToFit()

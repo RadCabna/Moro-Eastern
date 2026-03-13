@@ -6,5 +6,9 @@
     <array>
         <string>SF-Pro-Display-Semibold.otf</string>
     </array>
+    <key>NSCameraUsageDescription</key>
+    <string>We need camera access to add photos to your diary</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>We need photo library access to pick images for your diary</string>
 </dict>
 </plist>
